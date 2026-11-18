@@ -1,0 +1,397 @@
+<!DOCTYPE html><html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Калькулятор ДПК</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+    }
+    h1, h2 { margin: 0 0 12px; }
+    .box {
+      background: #111827;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      color: #a3aab8;
+      margin: 12px 0 6px;
+      font-size: 14px;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      font-size: 16px;
+    }
+    input, select {
+      background: #020617;
+      color: white;
+    }
+    button {
+      border: 0;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .green { background: #16a34a; }
+    .red { background: #dc2626; }
+    .orange { background: #ea580c; }
+    .gray { background: #475569; }
+    .purple { background: #7c3aed; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    table {
+      width: 100%;
+      min-width: 680px;
+      border-collapse: collapse;
+      background: #1f2937;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      margin-top: 10px;
+    }
+    th, td {
+      border-bottom: 1px solid #334155;
+      padding: 8px;
+      text-align: left;
+      font-size: 14px;
+    }
+    th { color: #a3aab8; background: #111827; }
+    td input, td select { padding: 8px; font-size: 14px; }
+    .del { background: #991b1b; padding: 8px; margin: 0; }
+    .result {
+      background: #020617;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .result .name { color: #a3aab8; font-size: 14px; margin-bottom: 5px; }
+    .result .value { font-size: 26px; font-weight: bold; }
+    .redtext { color: #f87171; }
+    .greentext { color: #4ade80; }
+    .bluetext { color: #60a5fa; }
+    .small {
+      color: #cbd5e1;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>  <h1>Калькулятор ДПК</h1>
+  <p class="small">Считает среднедневной остаток. Дата открытия входит. Последний день месяца входит. Сегодняшний день считается ещё не закрытым, поэтому накопленные остатки считаются до вчера.</p>  <div class="box">
+    <h2>Данные</h2><label>Дата открытия счёта</label>
+<input type="date" id="openDate">
+
+<label>Дата расчёта / сегодня</label>
+<input type="date" id="calcDate">
+
+<label>Месяц расчёта</label>
+<input type="month" id="month">
+
+<label>Запас безопасности</label>
+<input type="number" id="safety" value="2000">
+
+  </div>  <div class="box">
+    <h2>Операции</h2><div class="grid">
+  <button class="green" onclick="addOp('plus')">+ Пополнение</button>
+  <button class="gray" onclick="addOp('minus')">+ Списание</button>
+  <button class="orange" onclick="addOp('fee')">+ Комиссия</button>
+</div>
+
+<button class="purple" onclick="testExample()">Тест: пример 8 мая</button>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Тип</th>
+        <th>Сумма</th>
+        <th>Удалить</th>
+      </tr>
+    </thead>
+    <tbody id="ops"></tbody>
+  </table>
+</div>
+
+<button onclick="calc()">Рассчитать</button>
+<button class="red" onclick="clearOps()">Очистить</button>
+
+  </div>  <div class="box">
+    <h2>Результат</h2><div class="result">
+  <div class="name">Сколько нужно довнести минимум</div>
+  <div class="value redtext" id="need">—</div>
+</div>
+
+<div class="result">
+  <div class="name">Рекомендую довнести с запасом</div>
+  <div class="value redtext" id="recommend">—</div>
+</div>
+
+<div class="result">
+  <div class="name">Уже накоплено дневных остатков</div>
+  <div class="value bluetext" id="saved">—</div>
+</div>
+
+<div class="result">
+  <div class="name">Среднедневной за закрытые дни</div>
+  <div class="value bluetext" id="avgClosed">—</div>
+</div>
+
+<div class="result">
+  <div class="name">Текущий остаток</div>
+  <div class="value" id="balance">—</div>
+</div>
+
+<div class="result">
+  <div class="name">Итоговый среднедневной, если ничего не довносить</div>
+  <div class="value" id="avgNoAdd">—</div>
+</div>
+
+<div class="result">
+  <div class="name">Итоговый среднедневной после довнесения</div>
+  <div class="value greentext" id="avgAfter">—</div>
+</div>
+
+<div class="small" id="text"></div>
+
+  </div>  <div class="box">
+    <h2>Проверка по дням</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Остаток на конец дня</th>
+            <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody id="days"></tbody>
+      </table>
+    </div>
+  </div><script>
+  const LIMIT = 10000;
+
+  function pad(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function iso(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function parseDate(s) {
+    const p = s.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
+  }
+
+  function addDays(d, n) {
+    const x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+
+  function daysBetween(a, b) {
+    return Math.floor((b - a) / 86400000) + 1;
+  }
+
+  function endOfMonth(monthValue) {
+    const p = monthValue.split('-').map(Number);
+    return new Date(p[0], p[1], 0);
+  }
+
+  function rub(n) {
+    return (Number(n) || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₽';
+  }
+
+  function rub0(n) {
+    return Math.ceil(Number(n) || 0).toLocaleString('ru-RU') + ' ₽';
+  }
+
+  function getDefaultDate() {
+    const rows = document.querySelectorAll('#ops tr');
+    if (rows.length > 0) {
+      const last = rows[rows.length - 1].querySelector('.op-date').value;
+      if (last) return last;
+    }
+    return document.getElementById('openDate').value;
+  }
+
+  function addOp(type, date = '', amount = '') {
+    const tr = document.createElement('tr');
+    const d = date || getDefaultDate();
+
+    tr.innerHTML = `
+      <td><input type="date" class="op-date" value="${d}"></td>
+      <td>
+        <select class="op-type">
+          <option value="plus">Пополнение</option>
+          <option value="minus">Списание</option>
+          <option value="fee">Комиссия</option>
+        </select>
+      </td>
+      <td><input type="number" class="op-amount" value="${amount}" placeholder="0"></td>
+      <td><button class="del" onclick="this.closest('tr').remove()">Удалить</button></td>
+    `;
+
+    document.getElementById('ops').appendChild(tr);
+    tr.querySelector('.op-type').value = type;
+  }
+
+  function getOps() {
+    const rows = document.querySelectorAll('#ops tr');
+    const map = {};
+
+    rows.forEach(row => {
+      const date = row.querySelector('.op-date').value;
+      const type = row.querySelector('.op-type').value;
+      const amount = Number(row.querySelector('.op-amount').value) || 0;
+
+      if (!date || amount <= 0) return;
+
+      let value = amount;
+      if (type === 'minus' || type === 'fee') value = -amount;
+
+      if (!map[date]) map[date] = 0;
+      map[date] += value;
+    });
+
+    return map;
+  }
+
+  function calc() {
+    const openDateValue = document.getElementById('openDate').value;
+    const calcDateValue = document.getElementById('calcDate').value;
+    const monthValue = document.getElementById('month').value;
+    const safety = Number(document.getElementById('safety').value) || 0;
+
+    if (!openDateValue || !calcDateValue || !monthValue) {
+      alert('Заполни дату открытия, дату расчёта и месяц');
+      return;
+    }
+
+    const openDate = parseDate(openDateValue);
+    const calcDate = parseDate(calcDateValue);
+    const monthEnd = endOfMonth(monthValue);
+    const yesterday = addDays(calcDate, -1);
+    const ops = getOps();
+
+    let balance = 0;
+    let accumulated = 0;
+    let closedDays = 0;
+    let currentBalance = 0;
+    let html = '';
+
+    for (let d = new Date(openDate); d <= monthEnd; d = addDays(d, 1)) {
+      const key = iso(d);
+      if (ops[key]) balance += ops[key];
+
+      let status = 'будущий день';
+      let rowColor = '';
+
+      if (d <= yesterday) {
+        accumulated += balance;
+        closedDays++;
+        status = 'учтён в накопленных остатках';
+        rowColor = 'style="background:rgba(34,197,94,.10)"';
+      } else if (iso(d) === calcDateValue) {
+        status = 'сегодня, ещё не закрыт';
+        rowColor = 'style="background:rgba(59,130,246,.12)"';
+      }
+
+      if (iso(d) === calcDateValue) {
+        currentBalance = balance;
+      }
+
+      html += `<tr ${rowColor}><td>${key}</td><td>${rub(balance)}</td><td>${status}</td></tr>`;
+    }
+
+    document.getElementById('days').innerHTML = html;
+
+    const totalDays = daysBetween(openDate, monthEnd);
+    const daysLeft = daysBetween(calcDate, monthEnd);
+    const targetSum = LIMIT * totalDays;
+    const leftSum = targetSum - accumulated;
+    const needBalanceFromToday = leftSum / daysLeft;
+    const needDeposit = Math.max(0, needBalanceFromToday - currentBalance);
+    const recommend = Math.ceil(needDeposit + safety);
+    const avgClosed = closedDays > 0 ? accumulated / closedDays : 0;
+    const avgNoAdd = (accumulated + currentBalance * daysLeft) / totalDays;
+    const avgAfter = (accumulated + (currentBalance + needDeposit) * daysLeft) / totalDays;
+
+    document.getElementById('need').textContent = rub(needDeposit);
+    document.getElementById('recommend').textContent = rub0(recommend);
+    document.getElementById('saved').textContent = rub(accumulated);
+    document.getElementById('avgClosed').textContent = closedDays > 0 ? rub(avgClosed) : '0 ₽';
+    document.getElementById('balance').textContent = rub(currentBalance);
+    document.getElementById('avgNoAdd').textContent = rub(avgNoAdd);
+    document.getElementById('avgAfter').textContent = rub(avgAfter);
+
+    document.getElementById('text').innerHTML = `
+      <b>Период:</b> ${openDateValue} — ${iso(monthEnd)} = ${totalDays} дней<br>
+      <b>Закрытые дни:</b> с ${openDateValue} по ${iso(yesterday)} = ${closedDays} дней<br>
+      <b>Уже накоплено:</b> ${rub(accumulated)}<br>
+      <b>Нужно всего:</b> 10 000 × ${totalDays} = ${rub(targetSum)}<br>
+      <b>Осталось добрать:</b> ${rub(targetSum)} − ${rub(accumulated)} = ${rub(leftSum)}<br>
+      <b>Осталось дней, включая сегодня:</b> ${daysLeft}<br>
+      <b>Нужный остаток с сегодня:</b> ${rub(needBalanceFromToday)}<br>
+      <b>Текущий остаток:</b> ${rub(currentBalance)}<br>
+      <b>Минимально довнести:</b> ${rub(needDeposit)}
+    `;
+  }
+
+  function clearOps() {
+    document.getElementById('ops').innerHTML = '';
+    document.getElementById('days').innerHTML = '';
+  }
+
+  function testExample() {
+    document.getElementById('openDate').value = '2026-05-08';
+    document.getElementById('calcDate').value = '2026-05-15';
+    document.getElementById('month').value = '2026-05';
+    document.getElementById('safety').value = '0';
+
+    clearOps();
+    addOp('plus', '2026-05-08', '12500');
+    addOp('fee', '2026-05-08', '780');
+    addOp('plus', '2026-05-14', '105000');
+    addOp('minus', '2026-05-14', '110000');
+
+    calc();
+  }
+
+  function init() {
+    const today = new Date();
+    const todayStr = iso(today);
+    document.getElementById('openDate').value = todayStr;
+    document.getElementById('calcDate').value = todayStr;
+    document.getElementById('month').value = today.getFullYear() + '-' + pad(today.getMonth() + 1);
+    addOp('plus');
+  }
+
+  init();
+</script><div style="text-align:center; color:#a3aab8; font-size:12px; padding:14px 0 6px;">
+  Разработано Байрамов Солтан 2026
+</div></body>
+</html>
